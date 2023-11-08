@@ -1,3 +1,6 @@
+//dd play api
+//https://github.com/kaedei/dandanplay-libraryindex
+
 function searchAnime(s: string | number) {
     const url = `https://api.dandanplay.net/api/v2/search/episodes?anime=${s}`
     return fetch(url)
@@ -13,16 +16,22 @@ function danmaku_origin(episodeId: string | number, index: number = 0) {
     return fetch(url)
 }
 
-// 通过sn码找巴哈的弹幕
-function get_danmaku_baha(sn: string | number) {
-    // const url = 'https://tw.dandanplay.net/ajax/danmuGet.php'
-    const url = 'http://localhost:1000/ajax/danmuGet.php'
-    const form = new FormData()
-    form.set('sn', String(sn))
-    return fetch(url, {
-        method: 'post',
-        body: form
-    })
+function danmaku_convert(url: string) {
+    const req = `https://api.dandanplay.net/api/v2/extcomment?url=${url}`
+    return fetch(req)
 }
 
-export { searchAnime, danmaku_origin, get_danmaku_baha, get_danmaku_ddplay }
+
+// 通过sn码找巴哈的弹幕
+// function get_danmaku_baha(sn: string | number) {
+//     // const url = 'https://tw.dandanplay.net/ajax/danmuGet.php'
+//     const url = 'http://localhost:1000/ajax/danmuGet.php'
+//     const form = new FormData()
+//     form.set('sn', String(sn))
+//     return fetch(url, {
+//         method: 'post',
+//         body: form
+//     })
+// }
+
+export { searchAnime, danmaku_origin, get_danmaku_ddplay, danmaku_convert }

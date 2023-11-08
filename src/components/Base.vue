@@ -39,7 +39,7 @@
 import { Component, Vue, toNative } from 'vue-facing-decorator'
 import { Setting, Search } from '@element-plus/icons-vue'
 import Danmaku from 'danmaku'
-import { danmaku_origin, get_danmaku_baha, searchAnime, get_danmaku_ddplay } from '../api'
+import { danmaku_origin, danmaku_convert, searchAnime, get_danmaku_ddplay } from '../api'
 import { convertBaha, convertDDPlay } from '../util/DanmakuConvertorts'
 import { DanmakuComment } from "../index";
 
@@ -98,12 +98,13 @@ class Base extends Vue {
 
             for (const relateds of urls.relateds) {
                 const url = relateds.url
-                if (url.startsWith('https://ani.gamer.com.tw')) {
-                    const sn = new URL(url).searchParams.get('sn')
-                    const baha = await (await get_danmaku_baha(sn!)).json()
-                    dm.push(...convertBaha(baha))
-                    break
+                const c = await danmaku_convert(url)
+                if (c.status != 200) {
+                    this.$message.error(`无法转换弹幕${url}`)
+                    continue
                 }
+                const danmaku = await c.json()
+                dm.push(...convertDDPlay(danmaku.comments))
             }
             this.visible.search = false
 
