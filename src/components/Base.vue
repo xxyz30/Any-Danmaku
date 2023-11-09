@@ -1,13 +1,26 @@
 <template>
     <div>
-        <el-button class="panel-button" circle :icon="Search" @click="visible.search = true" draggable></el-button>
-        <el-button class="panel-button" circle :icon="Setting" @click="visible.panel = true" v-show="!visible.panel"
-            draggable></el-button>
-        <el-dialog v-model="visible.panel" title="Any-Danmaku设置">
-            设置界面
+        <div v-show="!(visible.search || visible.setting)">
+            <el-button class="panel-button" circle :icon="Search" @click="visible.search = true" draggable></el-button>
+            <el-button class="panel-button" circle :icon="Setting" @click="visible.setting = true"></el-button>
+        </div>
+        <el-dialog v-model="visible.setting" title="Any-Danmaku设置" draggable>
+            <p>
+                //todo
+                弹幕来源
+                弹幕样式
+                弹幕屏蔽
+                etc
+            </p>
         </el-dialog>
-        <el-dialog v-model="visible.search" title="搜索弹幕">
-
+        <el-dialog v-model="visible.search" title="搜索弹幕" append-to-body draggable>
+            <el-form-item label="视频容器">
+                <el-select v-model="query.video" placeholder="选择一个视频容器" value-key="src">
+                    <el-option v-for="(item, i) of avaibleVideos" :key="i" :label="`视频容器${i + 1}`" :value="item"
+                        @mouseenter="item.classList.add('any-danmaku-video-highlight')"
+                        @mouseleave="item.classList.remove('any-danmaku-video-highlight')" />
+                </el-select>
+            </el-form-item>
             <el-form-item label="名称">
                 <el-input v-model="query.name" placeholder="请输入作品名称" @keydown.enter.native="searchVideo">
                     <template #append>
@@ -52,7 +65,7 @@ class Base extends Vue {
     public Search = Search
 
     public visible = {
-        panel: false,
+        setting: false,
         search: false
     }
 
@@ -63,24 +76,38 @@ class Base extends Vue {
 
     public query = {
         name: '',
+        video: null as unknown as HTMLMediaElement,
         episodeId: -1
     }
 
     public searchResult: any = {}
+
+
+    public get avaibleVideos() {
+        // return 
+        const v = Array.from(document.getElementsByTagName('video'))
+        console.log(v);
+        return v
+    }
 
     public searchVideo() {
         this.loading.danmakuList = true
         searchAnime(this.query.name).then(async res => {
             this.searchResult = await res.json()
         }).finally(() => this.loading.danmakuList = false)
-
     }
 
     public async fetchingDanmaku() {
+        console.log(this.query);
         if (this.query.episodeId == -1) {
             this.$message.warning('请选择一集！')
             return
         }
+        if (this.query.video == null) {
+            this.$message.warning('请选择一个容器！')
+            return
+        }
+
         console.log(this.query.episodeId);
 
         const dm: DanmakuComment[] = []
@@ -92,10 +119,6 @@ class Base extends Vue {
 
         danmaku_origin(this.query.episodeId).then(async res => {
             const urls = await res.json();
-
-            //先取第一个
-            const url: string = urls.relateds[0].url
-
             for (const relateds of urls.relateds) {
                 const url = relateds.url
                 const c = await danmaku_convert(url)
@@ -109,51 +132,92 @@ class Base extends Vue {
             this.visible.search = false
 
         }).then(() => {
-            this.attachVideo(dm)
+            this.attachVideo2(dm)
         }).finally(() => this.loading.fetchingDanmaku = false)
 
     }
 
+    //每段时间获得视频容器的位置来显示弹幕
+    //缺点是没法全屏
     public attachVideo(danmaku: DanmakuComment[]) {
+        const video = this.query.video
+        const overlay = document.createElement('div')
+        overlay.className = 'any-danmaku-overlay'
+        // video.parentElement!.append(overlay)
+        // video.parentElement!.removeChild(video)
+        // video.style.zIndex = '0'
+        video.classList.add('any-danmaku-video')
+        overlay.style.zIndex = '100000000'
+        overlay.style.position = 'fixed'
+        // overlay.style.pointerEvents = 'none'
+        // overlay.style.inset = '0'
 
-        let videos = document.getElementsByTagName('video')
+        const rect = video.getBoundingClientRect()
+        overlay.style.width = `${rect.width}px`
+        overlay.style.height = `${rect.height}px`
+        overlay.style.top = `${rect.top}px`
+        overlay.style.left = `${rect.left}px`
+        overlay.style.pointerEvents = 'none'
+        document.body.parentElement!.append(overlay)
+        const d = new Danmaku({
+            container: overlay,
+            media: video,
+            comments: danmaku
+        })
+        // d.getDom().style.inset = '0'
+        // d.getDom().style.position = 'absolute'
+        // let ob = new ResizeObserver(() => {
+        // })
+        // ob.observe(document.getElementsByTagName('html').item(0)!)
 
-        for (let i = 0; i < videos.length; i++) {
-            const video = videos[i];
-            // console.log(video)
-            const overlay = document.createElement('div')
-            // overlay.className = video.className
-            video.parentElement!.append(overlay)
-            video.parentElement!.removeChild(video)
-            overlay.appendChild(video)
-            // overlay.style.zIndex = '100000000'
-            overlay.style.position = 'absolute'
-            // overlay.style.pointerEvents = 'none'
-            overlay.style.inset = '0'
+        //还是这个最稳定，不受无法滚动的body的影响。虽然有点弹幕延迟
+        setInterval(() => {
+            const rect = video.getBoundingClientRect()
+            overlay.style.width = `${rect.width}px`
+            overlay.style.height = `${rect.height}px`
+            overlay.style.top = `${rect.top}px`
+            overlay.style.left = `${rect.left}px`
+            d.resize()
+        }, 20)
+    }
 
-            // console.log(overlay);
+    //向视频容器上级添加一个容器来达到显示效果
+    //缺点是可能破坏dom
+    public attachVideo2(danmaku: DanmakuComment[]) {
+        const video = this.query.video
+        // console.log(video)
+        const overlay = document.createElement('div')
+        overlay.className = 'any-danmaku-overlay'
+        // overlay.className = video.className
+        video.parentElement!.append(overlay)
+        video.parentElement!.removeChild(video)
+        video.style.zIndex = '0'
+        video.classList.add('any-danmaku-video')
+        overlay.appendChild(video)
+        // overlay.style.zIndex = '100000000'
+        overlay.style.position = 'absolute'
+        // overlay.style.pointerEvents = 'none'
+        overlay.style.inset = '0'
 
-            const d = new Danmaku({
-                container: overlay,
-                media: video,
-                comments: danmaku
-            })
+        // console.log(overlay);
 
-            console.log(d.getDom());
-            d.getDom().style.inset = '0'
-            d.getDom().style.position = 'absolute'
-
-            setInterval(() => {
-                overlay.style.width = video.style.width ?? '100%'
-                overlay.style.height = video.style.height ?? '100%'
-                d.resize()
-            }, 100)
-
-        }
+        const d = new Danmaku({
+            container: overlay,
+            media: video,
+            comments: danmaku
+        })
+        d.getDom().style.inset = '0'
+        d.getDom().style.position = 'absolute'
+        let ob = new ResizeObserver(() => {
+            overlay.style.width = video.style.width ?? '100%'
+            overlay.style.height = video.style.height ?? '100%'
+            d.resize()
+        })
+        ob.observe(video)
     }
 
     public openPanel() {
-        this.visible.panel = true
+        this.visible.setting = true
     }
 }
 export default toNative(Base)

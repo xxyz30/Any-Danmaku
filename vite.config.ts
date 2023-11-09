@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
-import monkey, { cdn } from 'vite-plugin-monkey';
+import monkey, { cdn, util } from 'vite-plugin-monkey';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -10,13 +10,28 @@ export default defineConfig({
       entry: 'src/main.ts',
       userscript: {
         icon: 'https://vitejs.dev/logo.svg',
-        namespace: 'npm/vite-plugin-monkey',
-        match: ['https://www.baidu.com'],
+        namespace: 'any-danmaku',
+        match: ['*'],
+        author: 'xxyz30',
+        version: '0.1',
         include: ['*']
       },
       build: {
         externalGlobals: {
-          vue: cdn.jsdelivr('Vue', 'dist/vue.global.prod.js'),
+          vue: cdn.jsdelivr('Vue', 'dist/vue.global.prod.js').concat(await util.fn2dataUrl(() => {
+            // @ts-ignore
+            window.Vue = Vue
+          })),
+          'element-plus': cdn.jsdelivr('ElementPlus', 'dist/index.full.min.js'),
+          danmaku: cdn.jsdelivr('danmaku', 'dist/danmaku.min.js').concat(await util.fn2dataUrl(() => {
+            // @ts-ignore
+            window.danmaku = Danmaku
+          })),
+          // 这玩意没被打包到full所以算了
+          // 'vue-facing-decorator': cdn.jsdelivr('vueFacingDecorator', '+esm'),
+        },
+        externalResource: {
+          'element-plus/dist/index.css': cdn.jsdelivr(),
         },
       },
     }),

@@ -1,5 +1,6 @@
 //dd play api
 //https://github.com/kaedei/dandanplay-libraryindex
+//https://api.dandanplay.net/swagger/ui/index
 
 function searchAnime(s: string | number) {
     const url = `https://api.dandanplay.net/api/v2/search/episodes?anime=${s}`

@@ -28,7 +28,7 @@ function convertBaha(danmaku: any[]): DanmakuComment[] {
 function convertDDPlay(danmaku: any[]): DanmakuComment[] {
     const result: DanmakuComment[] = []
     for (const d of danmaku) {
-        const [time, pos, color, uid] = (d.p as string).split(',')
+        const [time, pos, color, _uid] = (d.p as string).split(',')
         result.push({
             text: d.m,
             time: Number(time),
