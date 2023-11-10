@@ -46,6 +46,20 @@
                 </span>
             </template>
         </el-dialog>
+        <el-dialog v-model="visible.selectOrigin" title="选择弹幕来源">
+            <el-checkbox-group v-model="query.origin">
+                <el-checkbox v-for="(item, i) in avaibleDanmakuOrigin" :label="i" :checked="true">
+                    <a :href="(i as string)" target="_blank">{{ i }}</a>
+                </el-checkbox>
+            </el-checkbox-group>
+            <template #footer>
+                <span class="dialog-footer">
+                    <el-button type="primary" @click="onChooseDanmakuOrigin"
+                        :loading="loading.fetchingDanmaku">确定</el-button>
+                    <el-button>取消</el-button>
+                </span>
+            </template>
+        </el-dialog>
     </div>
 </template>
 <script lang="ts">
@@ -66,7 +80,8 @@ class Base extends Vue {
 
     public visible = {
         setting: false,
-        search: false
+        search: false,
+        selectOrigin: false
     }
 
     public loading = {
@@ -77,17 +92,20 @@ class Base extends Vue {
     public query = {
         name: '',
         video: null as unknown as HTMLMediaElement,
-        episodeId: -1
+        episodeId: -1,
+        origin: [] as string[]
     }
 
     public searchResult: any = {}
 
+    public avaibleDanmakuOrigin: { [k: string]: DanmakuComment[] } = {
+
+    }
+
 
     public get avaibleVideos() {
         // return 
-        const v = Array.from(document.getElementsByTagName('video'))
-        console.log(v);
-        return v
+        return Array.from(document.getElementsByTagName('video'))
     }
 
     public searchVideo() {
@@ -110,12 +128,12 @@ class Base extends Vue {
 
         console.log(this.query.episodeId);
 
-        const dm: DanmakuComment[] = []
+        this.avaibleDanmakuOrigin = {}
         this.loading.fetchingDanmaku = true;
 
         const ddPlayDm = await (await get_danmaku_ddplay(this.query.episodeId)).json()
 
-        dm.push(...convertDDPlay(ddPlayDm.comments))
+        this.avaibleDanmakuOrigin['弹弹play'] = convertDDPlay(ddPlayDm.comments)
 
         danmaku_origin(this.query.episodeId).then(async res => {
             const urls = await res.json();
@@ -127,14 +145,24 @@ class Base extends Vue {
                     continue
                 }
                 const danmaku = await c.json()
-                dm.push(...convertDDPlay(danmaku.comments))
+                this.avaibleDanmakuOrigin[url] = convertDDPlay(danmaku.comments)
             }
             this.visible.search = false
-
-        }).then(() => {
-            this.attachVideo2(dm)
+            this.visible.selectOrigin = true
         }).finally(() => this.loading.fetchingDanmaku = false)
+    }
 
+    public onChooseDanmakuOrigin() {
+        if (this.query.origin.length == 0) {
+            this.$message.warning('请选择至少一个弹幕来源！')
+            return
+        }
+        const dm: DanmakuComment[] = []
+        for (const i of this.query.origin) {
+            dm.push(...this.avaibleDanmakuOrigin[i])
+        }
+        this.attachVideo2(dm)
+        this.visible.selectOrigin = false
     }
 
     //每段时间获得视频容器的位置来显示弹幕
