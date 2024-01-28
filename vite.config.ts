@@ -12,8 +12,10 @@ export default defineConfig({
         icon: 'https://vitejs.dev/logo.svg',
         namespace: 'any-danmaku',
         match: ['*'],
+        grant: ['GM.xmlHttpRequest'],
         author: 'xxyz30',
         version: '0.1',
+        connect: ['dandanplay.net'],
         include: ['*']
       },
       build: {

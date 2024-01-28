@@ -16,9 +16,11 @@
         <el-dialog v-model="visible.search" title="搜索弹幕" append-to-body draggable>
             <el-form-item label="视频容器">
                 <el-select v-model="query.video" placeholder="选择一个视频容器" value-key="src">
-                    <el-option v-for="(item, i) of avaibleVideos" :key="i" :label="`视频容器${i + 1}`" :value="item"
-                        @mouseenter="item.classList.add('any-danmaku-video-highlight')"
-                        @mouseleave="item.classList.remove('any-danmaku-video-highlight')" />
+                    <el-option-group v-for="(doc, i) of avaibleDocument" :key="i" :label="`容器${i}`" v-show="avaibleVideos(doc).length">
+                        <el-option v-for="(item, i) of avaibleVideos(doc)" :key="i" :label="`视频容器${i + 1}`" :value="item"
+                            @mouseenter="item.classList.add('any-danmaku-video-highlight')"
+                            @mouseleave="item.classList.remove('any-danmaku-video-highlight')" />
+                    </el-option-group>
                 </el-select>
             </el-form-item>
             <el-form-item label="名称">
@@ -72,9 +74,7 @@ import { DanmakuComment } from "../index";
 
 @Component({})
 class Base extends Vue {
-    vShow(vShow: any) {
-        throw new Error('Method not implemented.')
-    }
+
     public Setting = Setting
     public Search = Search
 
@@ -102,16 +102,20 @@ class Base extends Vue {
 
     }
 
+    public get avaibleDocument(): Document[] {
+        return [document,
+            ...Array.from(document.getElementsByTagName('iframe')).map(v => v.contentDocument!).filter(v => v)
+        ]
+    }
 
-    public get avaibleVideos() {
-        // return 
-        return Array.from(document.getElementsByTagName('video'))
+    public avaibleVideos(doc: Document) {
+        return Array.from(doc.getElementsByTagName('video'))
     }
 
     public searchVideo() {
         this.loading.danmakuList = true
-        searchAnime(this.query.name).then(async res => {
-            this.searchResult = await res.json()
+        searchAnime(this.query.name).then(res => {
+            this.searchResult = res.response
         }).finally(() => this.loading.danmakuList = false)
     }
 
@@ -131,12 +135,12 @@ class Base extends Vue {
         this.avaibleDanmakuOrigin = {}
         this.loading.fetchingDanmaku = true;
 
-        const ddPlayDm = await (await get_danmaku_ddplay(this.query.episodeId)).json()
+        const ddPlayDm = (await get_danmaku_ddplay(this.query.episodeId)).response
 
         this.avaibleDanmakuOrigin['弹弹play'] = convertDDPlay(ddPlayDm.comments)
 
         danmaku_origin(this.query.episodeId).then(async res => {
-            const urls = await res.json();
+            const urls = res.response
             for (const relateds of urls.relateds) {
                 const url = relateds.url
                 const c = await danmaku_convert(url)
@@ -144,7 +148,7 @@ class Base extends Vue {
                     this.$message.error(`无法转换弹幕${url}`)
                     continue
                 }
-                const danmaku = await c.json()
+                const danmaku = c.response
                 this.avaibleDanmakuOrigin[url] = convertDDPlay(danmaku.comments)
             }
             this.visible.search = false
@@ -161,57 +165,15 @@ class Base extends Vue {
         for (const i of this.query.origin) {
             dm.push(...this.avaibleDanmakuOrigin[i])
         }
-        this.attachVideo2(dm)
+        this.attachVideo(dm)
         this.visible.selectOrigin = false
-    }
-
-    //每段时间获得视频容器的位置来显示弹幕
-    //缺点是没法全屏
-    public attachVideo(danmaku: DanmakuComment[]) {
-        const video = this.query.video
-        const overlay = document.createElement('div')
-        overlay.className = 'any-danmaku-overlay'
-        // video.parentElement!.append(overlay)
-        // video.parentElement!.removeChild(video)
-        // video.style.zIndex = '0'
-        video.classList.add('any-danmaku-video')
-        overlay.style.zIndex = '100000000'
-        overlay.style.position = 'fixed'
-        // overlay.style.pointerEvents = 'none'
-        // overlay.style.inset = '0'
-
-        const rect = video.getBoundingClientRect()
-        overlay.style.width = `${rect.width}px`
-        overlay.style.height = `${rect.height}px`
-        overlay.style.top = `${rect.top}px`
-        overlay.style.left = `${rect.left}px`
-        overlay.style.pointerEvents = 'none'
-        document.body.parentElement!.append(overlay)
-        const d = new Danmaku({
-            container: overlay,
-            media: video,
-            comments: danmaku
-        })
-        // d.getDom().style.inset = '0'
-        // d.getDom().style.position = 'absolute'
-        // let ob = new ResizeObserver(() => {
-        // })
-        // ob.observe(document.getElementsByTagName('html').item(0)!)
-
-        //还是这个最稳定，不受无法滚动的body的影响。虽然有点弹幕延迟
-        setInterval(() => {
-            const rect = video.getBoundingClientRect()
-            overlay.style.width = `${rect.width}px`
-            overlay.style.height = `${rect.height}px`
-            overlay.style.top = `${rect.top}px`
-            overlay.style.left = `${rect.left}px`
-            d.resize()
-        }, 20)
     }
 
     //向视频容器上级添加一个容器来达到显示效果
     //缺点是可能破坏dom
-    public attachVideo2(danmaku: DanmakuComment[]) {
+    // 神奇的是樱花动漫移动了视频容器, 视频的src会炸掉,不清楚是什么原因
+    // 另外不能劫持video的上面一层的节点, 否则因为阻挡了输入可能导致外部的控制条没法操作视频
+    public attachVideo(danmaku: DanmakuComment[]) {
         const video = this.query.video
         // console.log(video)
         const overlay = document.createElement('div')

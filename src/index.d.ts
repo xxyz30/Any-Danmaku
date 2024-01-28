@@ -22,7 +22,7 @@ interface DanmakuComment {
 
 declare module 'danmaku' {
     export default interface Danmaku {
-        public _: {
+        _: {
             duration: number,
             engine: any,
             height: number,
@@ -36,7 +36,39 @@ declare module 'danmaku' {
             visible: boolean,
             width: number
         };
-        public getDom(): HTMLElement | HTMLCanvasElement
+        getDom(): HTMLElement | HTMLCanvasElement
 
     }
+}
+
+type GmResponseTypeMap = {
+    text: string;
+    json: any;
+    arraybuffer: ArrayBuffer;
+    blob: Blob;
+    document: Document;
+    stream: ReadableStream<Uint8Array>;
+};
+
+
+declare type GM_RESPONSE<TResponseType> = {
+    finalUrl: string;
+    responseHeaders: string;
+    /**
+     * 0 = XMLHttpRequest.UNSENT
+     *
+     * 1 = XMLHttpRequest.OPENED
+     *
+     * 2 = XMLHttpRequest.HEADERS_RECEIVED
+     *
+     * 3 = XMLHttpRequest.HEADERS_RECEIVED
+     *
+     * 4 = XMLHttpRequest.DONE
+     */
+    readyState: 0 | 1 | 2 | 3 | 4;
+    response: GmResponseTypeMap[TResponseType];
+    responseText: string;
+    responseXML: Document | null;
+    status: number;
+    statusText: string;
 }

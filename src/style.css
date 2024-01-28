@@ -2,6 +2,7 @@
     filter: brightness(125%);
     outline: #f00 solid 2px;
 }
-/* div {
-    background: black;
-} */
+
+.any-danmaku-app {
+    all: initial;
+}
