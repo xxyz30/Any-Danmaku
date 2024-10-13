@@ -16,35 +16,40 @@
         <el-dialog v-model="visible.search" title="搜索弹幕" append-to-body draggable>
             <el-form-item label="视频容器">
                 <el-select v-model="query.video" placeholder="选择一个视频容器" value-key="src">
-                    <el-option-group v-for="(doc, i) of avaibleDocument" :key="i" :label="`容器${i}`" v-show="avaibleVideos(doc).length">
-                        <el-option v-for="(item, i) of avaibleVideos(doc)" :key="i" :label="`视频容器${i + 1}`" :value="item"
-                            @mouseenter="item.classList.add('any-danmaku-video-highlight')"
+                    <el-option-group v-for="(doc, i) of avaibleDocument" :key="i" :label="`容器${i}`"
+                        v-show="avaibleVideos(doc).length">
+                        <el-option v-for="(item, i) of avaibleVideos(doc)" :key="i" :label="`视频容器${i + 1}`"
+                            :value="item" @mouseenter="item.classList.add('any-danmaku-video-highlight')"
                             @mouseleave="item.classList.remove('any-danmaku-video-highlight')" />
                     </el-option-group>
                 </el-select>
+                <el-icon @click="refreshVideoContainer">
+                    <RefreshRight />
+                </el-icon>
             </el-form-item>
             <el-form-item label="名称">
-                <el-input v-model="query.name" placeholder="请输入作品名称" @keydown.enter.native="searchVideo">
+                <el-input v-model="query.name" placeholder="请输入作品名称" @keydown.enter.native="searchAnime">
                     <template #append>
-                        <el-button :icon="Search" @click="searchVideo" />
+                        <el-button :icon="Search" @click="searchAnime" />
                     </template>
                 </el-input>
             </el-form-item>
             <el-card shadow="never" class="result-card">
-                <el-collapse>
+                <el-collapse v-show="!query.processText">
                     <el-collapse-item :title="`${item.animeTitle} (${item.typeDescription})`"
-                        v-for="(item, index) in searchResult.animes" :key="index">
+                        v-for="(item, index) in searchResult" :key="index">
                         <el-radio-group v-model="query.episodeId">
                             <el-radio :label="j.episodeId" v-for="(j, ji) in item.episodes" :key="ji">{{ j.episodeTitle
-                            }}</el-radio>
+                                }}</el-radio>
                         </el-radio-group>
                     </el-collapse-item>
                 </el-collapse>
+                <p v-show="query.processText">{{ query.processText }}</p>
             </el-card>
             <template #footer>
                 <span class="dialog-footer">
                     <el-button type="primary" @click="fetchingDanmaku" :loading="loading.fetchingDanmaku">确定</el-button>
-                    <el-button>取消</el-button>
+                    <el-button @click="visible.search = false">取消</el-button>
                 </span>
             </template>
         </el-dialog>
@@ -68,7 +73,7 @@
 import { Component, Vue, toNative } from 'vue-facing-decorator'
 import { Setting, Search } from '@element-plus/icons-vue'
 import Danmaku from 'danmaku'
-import { danmaku_origin, danmaku_convert, searchAnime, get_danmaku_ddplay } from '../api'
+import api from '../api'
 import { convertBaha, convertDDPlay } from '../util/DanmakuConvertorts'
 import { DanmakuComment } from "../index";
 
@@ -93,30 +98,58 @@ class Base extends Vue {
         name: '',
         video: null as unknown as HTMLMediaElement,
         episodeId: -1,
-        origin: [] as string[]
+        origin: [] as string[],
+        processText: ''
     }
 
-    public searchResult: any = {}
+    public avaibleDocument: Document[] = []
+
+    public searchResult: any[] = []
 
     public avaibleDanmakuOrigin: { [k: string]: DanmakuComment[] } = {
 
     }
 
-    public get avaibleDocument(): Document[] {
-        return [document,
+    public avaibleVideos(doc: Document) {
+        return Array.from(doc.getElementsByTagName('video'))
+    }
+    public refreshVideoContainer() {
+        console.log('重构')
+        this.avaibleDocument = [document,
             ...Array.from(document.getElementsByTagName('iframe')).map(v => v.contentDocument!).filter(v => v)
         ]
     }
 
-    public avaibleVideos(doc: Document) {
-        return Array.from(doc.getElementsByTagName('video'))
+    public mounted() {
+        this.refreshVideoContainer()
     }
 
-    public searchVideo() {
+    public searchAnime() {
         this.loading.danmakuList = true
-        searchAnime(this.query.name).then(res => {
-            this.searchResult = res.response
-        }).finally(() => this.loading.danmakuList = false)
+        this.query.processText = '查询中……'
+        if (this.query.name) {
+            api.searchAnime(this.query.name).then(res => {
+                this.searchResult = res.response.animes
+                if (Object.keys(this.searchResult).length == 0) {
+                    this.query.processText = '未查询到结果'
+                } else {
+                    this.query.processText = ''
+                }
+            }).catch(r => {
+                this.query.processText = `查询失败:状态码${r.status} ${r.statusText},内容${r.responseText}请检查您的网络配置(DDPlay可能会检测代理)`
+            }).finally(() => this.loading.danmakuList = false)
+        } else {
+            api.shin().then(res => {
+                this.searchResult = res.response.bangumiList
+                if (Object.keys(this.searchResult).length == 0) {
+                    this.query.processText = '未查询到近期新番'
+                } else {
+                    this.query.processText = ''
+                }
+            }).catch(r => {
+                this.query.processText = `查询失败:状态码${r.status} ${r.statusText},内容${r.responseText}请检查您的网络配置(DDPlay可能会检测代理)`
+            }).finally(() => this.loading.danmakuList = false)
+        }
     }
 
     public async fetchingDanmaku() {
@@ -135,15 +168,15 @@ class Base extends Vue {
         this.avaibleDanmakuOrigin = {}
         this.loading.fetchingDanmaku = true;
 
-        const ddPlayDm = (await get_danmaku_ddplay(this.query.episodeId)).response
+        const ddPlayDm = (await api.get_danmaku_ddplay(this.query.episodeId)).response
 
         this.avaibleDanmakuOrigin['弹弹play'] = convertDDPlay(ddPlayDm.comments)
 
-        danmaku_origin(this.query.episodeId).then(async res => {
+        api.danmaku_origin(this.query.episodeId).then(async res => {
             const urls = res.response
             for (const relateds of urls.relateds) {
                 const url = relateds.url
-                const c = await danmaku_convert(url)
+                const c = await api.danmaku_convert(url)
                 if (c.status != 200) {
                     this.$message.error(`无法转换弹幕${url}`)
                     continue
@@ -198,6 +231,7 @@ class Base extends Vue {
         })
         d.getDom().style.inset = '0'
         d.getDom().style.position = 'absolute'
+        d.getDom().style.pointerEvents = 'unset'
         let ob = new ResizeObserver(() => {
             overlay.style.width = video.style.width ?? '100%'
             overlay.style.height = video.style.height ?? '100%'

@@ -11,6 +11,7 @@ function beforeMount() {
   // 判定是否是同源iframe,是的话就不要挂载了
   if (window.top !== window.self) {
     try {
+      //@ts-ignore
       window.top.alert
     } catch (e) {
       mount()
@@ -20,8 +21,15 @@ function beforeMount() {
   }
 }
 
+import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+
 function mount() {
-  createApp(App).use(ElementPlus).mount(
+  const app = createApp(App).use(ElementPlus)
+
+  for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+    app.component(key, component)
+  }
+  app.mount(
     (() => {
       const app = document.createElement('div');
       app.className = 'any-danmaku-app'
