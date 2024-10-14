@@ -72,10 +72,10 @@
 <script lang="ts">
 import { Component, Vue, toNative } from 'vue-facing-decorator'
 import { Setting, Search } from '@element-plus/icons-vue'
-import Danmaku from 'danmaku'
 import api from '../api'
-import { convertBaha, convertDDPlay } from '../util/DanmakuConvertorts'
+import { convertDDPlay } from '../util/DanmakuConvertorts'
 import { DanmakuComment } from "../index";
+import { attachVideo } from '../DanmakuManager'
 
 @Component({})
 class Base extends Vue {
@@ -96,7 +96,7 @@ class Base extends Vue {
 
     public query = {
         name: '',
-        video: null as unknown as HTMLMediaElement,
+        video: null as unknown as HTMLVideoElement,
         episodeId: -1,
         origin: [] as string[],
         processText: ''
@@ -163,8 +163,6 @@ class Base extends Vue {
             return
         }
 
-        console.log(this.query.episodeId);
-
         this.avaibleDanmakuOrigin = {}
         this.loading.fetchingDanmaku = true;
 
@@ -194,50 +192,8 @@ class Base extends Vue {
             this.$message.warning('请选择至少一个弹幕来源！')
             return
         }
-        const dm: DanmakuComment[] = []
-        for (const i of this.query.origin) {
-            dm.push(...this.avaibleDanmakuOrigin[i])
-        }
-        this.attachVideo(dm)
+        attachVideo(this.query.video, this.avaibleDanmakuOrigin)
         this.visible.selectOrigin = false
-    }
-
-    //向视频容器上级添加一个容器来达到显示效果
-    //缺点是可能破坏dom
-    // 神奇的是樱花动漫移动了视频容器, 视频的src会炸掉,不清楚是什么原因
-    // 另外不能劫持video的上面一层的节点, 否则因为阻挡了输入可能导致外部的控制条没法操作视频
-    public attachVideo(danmaku: DanmakuComment[]) {
-        const video = this.query.video
-        // console.log(video)
-        const overlay = document.createElement('div')
-        overlay.className = 'any-danmaku-overlay'
-        // overlay.className = video.className
-        video.parentElement!.append(overlay)
-        video.parentElement!.removeChild(video)
-        video.style.zIndex = '0'
-        video.classList.add('any-danmaku-video')
-        overlay.appendChild(video)
-        // overlay.style.zIndex = '100000000'
-        overlay.style.position = 'absolute'
-        // overlay.style.pointerEvents = 'none'
-        overlay.style.inset = '0'
-
-        // console.log(overlay);
-
-        const d = new Danmaku({
-            container: overlay,
-            media: video,
-            comments: danmaku
-        })
-        d.getDom().style.inset = '0'
-        d.getDom().style.position = 'absolute'
-        d.getDom().style.pointerEvents = 'unset'
-        let ob = new ResizeObserver(() => {
-            overlay.style.width = video.style.width ?? '100%'
-            overlay.style.height = video.style.height ?? '100%'
-            d.resize()
-        })
-        ob.observe(video)
     }
 
     public openPanel() {

@@ -1,29 +1,10 @@
 import { DanmakuComment } from "../index"
+import setting from "../setting"
 
 const base_pos: ['rtl', 'top', 'bottom'] = ['rtl', 'top', 'bottom']
 
 const ddplay_pos: { [k: string]: number } = { '1': 0, '4': 1, '5': 2 }
 
-const shadow = '#000 1px 0 1px,#000 0 1px 1px,#000 0 -1px 1px,#000 -1px 0 1px'
-const baseSize = 25
-
-function convertBaha(danmaku: any[]): DanmakuComment[] {
-    const result: DanmakuComment[] = []
-    for (const d of danmaku) {
-        result.push({
-            text: d.text,
-            time: d.time / 10,
-            mode: base_pos[d.position],
-            style: {
-                color: d.color,
-                fontSize: `${baseSize + d.size ?? 1}px`,
-                textShadow: shadow
-            }
-        })
-    }
-
-    return result
-}
 
 function convertDDPlay(danmaku: any[]): DanmakuComment[] {
     const result: DanmakuComment[] = []
@@ -35,12 +16,34 @@ function convertDDPlay(danmaku: any[]): DanmakuComment[] {
             mode: base_pos[ddplay_pos[pos]],
             style: {
                 color: '#' + Number(color).toString(16),
-                fontSize: `${baseSize}px`,
-                textShadow: '#000 1px 0 1px,#000 0 1px 1px,#000 0 -1px 1px,#000 -1px 0 1px'
+                fontSize: `${setting.style.baseSize}px`,
+                textShadow: setting.style.textShadow,
+                opacity: setting.style.opacity.toString(),
+                lineHeight: `${setting.style.lineHeight}px`
             }
+            // 这个函数有问题,在dev状态是好的，但是编译完成后就没办法渲染
+            // render: () => {
+            //     const v = h(DanmakuComponent, {
+            //         data: {
+            //             text: d.m,
+            //             cid: d.cid,
+            //             style: {
+            //                 color: '#' + Number(color).toString(16),
+            //                 fontSize: `${baseSize}px`,
+            //                 textShadow: shadow,
+            //                 lineHeight: '125%',
+            //                 opacity: '0.5',
+            //             }
+
+            //         }
+            //     })
+            //     const mount = document.createElement('div')
+            //     render(v, mount)
+            //     return mount
+            // }
         })
     }
     return result
 }
 
-export { convertBaha, convertDDPlay }
+export { convertDDPlay }

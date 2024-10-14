@@ -20,6 +20,10 @@ interface DanmakuComment {
     render?(): HTMLElement | HTMLCanvasElement;
 }
 
+declare global {
+    var DANMAKU: Danmaku
+}
+
 declare module 'danmaku' {
     export default interface Danmaku {
         _: {

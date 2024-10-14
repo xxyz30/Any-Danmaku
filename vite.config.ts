@@ -16,7 +16,8 @@ export default defineConfig({
         author: 'xxyz30',
         version: '0.1',
         connect: ['dandanplay.net'],
-        include: ['*']
+        include: ['*'],
+        // "run-at": 'document-start'
       },
       build: {
         externalGlobals: {
