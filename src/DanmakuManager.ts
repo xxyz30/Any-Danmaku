@@ -94,6 +94,9 @@ export function attachVideo(video: HTMLVideoElement, dm: Record<string, DanmakuC
                     break;
                 case 'rtl':
                 case 'ltr':
+                    if (scrollCount <= 0) {
+                        return
+                    }
                     scrollCount--;
             }
             DANMAKU.emit(v)
