@@ -1,16 +1,13 @@
 <template>
     <div>
         <div v-show="!(visible.search || visible.setting)">
-            <el-button class="panel-button" circle :icon="Search" @click="visible.search = true" draggable></el-button>
-            <el-button class="panel-button" circle :icon="Setting" @click="visible.setting = true"></el-button>
+            <el-button class="panel-button" circle :icon="SearchIcon" @click="visible.search = true" draggable></el-button>
+            <el-button class="panel-button" circle :icon="SettingIcon" @click="visible.setting = true"></el-button>
         </div>
         <el-dialog v-model="visible.setting" title="Any-Danmaku设置" draggable>
             <p>
-                //todo
-                弹幕来源
-                弹幕样式
-                弹幕屏蔽
-                etc
+                滚动弹幕数量
+                <el-input v-model="setting.maxComment"></el-input>
             </p>
         </el-dialog>
         <el-dialog v-model="visible.search" title="搜索弹幕" append-to-body draggable>
@@ -30,7 +27,7 @@
             <el-form-item label="名称">
                 <el-input v-model="query.name" placeholder="请输入作品名称" @keydown.enter.native="searchAnime">
                     <template #append>
-                        <el-button :icon="Search" @click="searchAnime" />
+                        <el-button :icon="SearchIcon" @click="searchAnime" />
                     </template>
                 </el-input>
             </el-form-item>
@@ -71,17 +68,21 @@
 </template>
 <script lang="ts">
 import { Component, Vue, toNative } from 'vue-facing-decorator'
-import { Setting, Search } from '@element-plus/icons-vue'
+import { Setting as SettingIcon, Search as SearchIcon } from '@element-plus/icons-vue'
 import api from '../api'
 import { convertDDPlay } from '../util/DanmakuConvertorts'
 import { DanmakuComment } from "../index";
 import { attachVideo } from '../DanmakuManager'
+import setting from '../setting';
 
 @Component({})
 class Base extends Vue {
 
-    public Setting = Setting
-    public Search = Search
+    public SettingIcon = SettingIcon;
+    public SearchIcon = SearchIcon;
+
+    public setting = setting;
+
 
     public visible = {
         setting: false,
