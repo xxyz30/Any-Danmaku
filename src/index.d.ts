@@ -39,7 +39,11 @@ declare module 'danmaku' {
             stage: HTMLElement | HTMLCanvasElement,
             visible: boolean,
             width: number
+            pause?: () => void,
+            play?: () => void,
+            seeking?: () => void
         };
+        media?: HTMLMediaElement,
         getDom(): HTMLElement | HTMLCanvasElement
 
     }

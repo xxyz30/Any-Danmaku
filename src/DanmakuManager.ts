@@ -24,6 +24,8 @@ export function attachVideo(video: HTMLVideoElement, dm: Record<string, DanmakuC
         media: video,
         // comments: Object.values(dm).flatMap(v => v)
     })
+    // 再置为空，使用直播模式
+    globalThis.DANMAKU.media = undefined
     DANMAKU.getDom().style.inset = '0'
     DANMAKU.getDom().style.position = 'absolute'
     DANMAKU.getDom().style.pointerEvents = 'none'
@@ -34,10 +36,13 @@ export function attachVideo(video: HTMLVideoElement, dm: Record<string, DanmakuC
     })
     ob.observe(video)
 
-    let lastTimeUpdate = 0.0
-
+    let lastTimeUpdate = video.currentTime
+    video.addEventListener('seeking', function (ev) {
+        lastTimeUpdate = this.currentTime
+        // console.log('seeking', lastTimeUpdate);
+    })
     video.addEventListener('timeupdate', function (ev) {
-        const time = video.currentTime;
+        const time = this.currentTime;
         console.log(time)
         // 这里需要过滤过多的弹幕，检测弹幕容器大小
         // 检测上下弹幕数量
@@ -62,6 +67,7 @@ export function attachVideo(video: HTMLVideoElement, dm: Record<string, DanmakuC
         const set = new Set()
         // 统计同屏弹幕数量，超过一定值直接不需要了
         // FIXME 只统计数量是不对的，因为若是弹幕过长，则碰撞计算会超过屏幕
+        // FIXME 性能有问题
         Object.values(dm).flatMap(v => v).forEach(v => {
             if (v.time! < lastTimeUpdate || v.time! > time) {
                 return
@@ -91,7 +97,6 @@ export function attachVideo(video: HTMLVideoElement, dm: Record<string, DanmakuC
                     scrollCount--;
             }
             DANMAKU.emit(v)
-            console.log(v.text)
         })
         // console.log(resultDM, DANMAKU._.runningList.length)
         lastTimeUpdate = time
